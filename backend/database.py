@@ -1,18 +1,28 @@
+import os
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, URL
 from sqlalchemy.orm import Session
 
 from models import Base, HSEReport
 
 
+# Load environment variables from .env
+load_dotenv()
+
+
+# PostgreSQL database configuration
 DATABASE_URL = URL.create(
     drivername="postgresql+psycopg",
-    username="postgres",
-    password="bala@86400",
-    host="localhost",
-    port=5432,
-    database="oil_hse_ai"
+    username=os.getenv("DB_USERNAME"),
+    password=os.getenv("DB_PASSWORD"),
+    host=os.getenv("DB_HOST"),
+    port=int(os.getenv("DB_PORT", 5432)),
+    database=os.getenv("DB_NAME")
 )
 
+
+# Create database engine
 engine = create_engine(DATABASE_URL)
 
 
