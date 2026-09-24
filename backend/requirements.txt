@@ -5,3 +5,4 @@ sqlalchemy
 psycopg[binary]
 python-dotenv
 openpyxl
+python-multipart
