@@ -11,20 +11,52 @@ from models import Base, HSEReport
 load_dotenv()
 
 
-# PostgreSQL database configuration
-DATABASE_URL = URL.create(
-    drivername="postgresql+psycopg",
-    username=os.getenv("DB_USERNAME"),
-    password=os.getenv("DB_PASSWORD"),
-    host=os.getenv("DB_HOST"),
-    port=int(os.getenv("DB_PORT", 5432)),
-    database=os.getenv("DB_NAME")
-)
+# --------------------------------------------------
+# Database configuration
+# --------------------------------------------------
+
+# Render provides DATABASE_URL.
+# Local development uses the DB_* variables from .env.
+
+DATABASE_URL_ENV = os.getenv("DATABASE_URL")
+
+if DATABASE_URL_ENV:
+    # Render may provide a postgres:// or postgresql:// URL.
+    # Convert it to the psycopg driver used by this project.
+    if DATABASE_URL_ENV.startswith("postgres://"):
+        DATABASE_URL_ENV = DATABASE_URL_ENV.replace(
+            "postgres://",
+            "postgresql+psycopg://",
+            1
+        )
+    elif DATABASE_URL_ENV.startswith("postgresql://"):
+        DATABASE_URL_ENV = DATABASE_URL_ENV.replace(
+            "postgresql://",
+            "postgresql+psycopg://",
+            1
+        )
+
+    DATABASE_URL = DATABASE_URL_ENV
+
+else:
+    # Local PostgreSQL configuration
+    DATABASE_URL = URL.create(
+        drivername="postgresql+psycopg",
+        username=os.getenv("DB_USERNAME"),
+        password=os.getenv("DB_PASSWORD"),
+        host=os.getenv("DB_HOST", "localhost"),
+        port=int(os.getenv("DB_PORT", 5432)),
+        database=os.getenv("DB_NAME", "oil_hse_ai")
+    )
 
 
 # Create database engine
 engine = create_engine(DATABASE_URL)
 
+
+# --------------------------------------------------
+# Test database connection
+# --------------------------------------------------
 
 def test_connection():
     try:
@@ -35,10 +67,18 @@ def test_connection():
         print(e)
 
 
+# --------------------------------------------------
+# Create database tables
+# --------------------------------------------------
+
 def create_tables():
     Base.metadata.create_all(engine)
     print("Tables created successfully!")
 
+
+# --------------------------------------------------
+# Add sample reports
+# --------------------------------------------------
 
 def add_sample_reports():
     sample_reports = [
