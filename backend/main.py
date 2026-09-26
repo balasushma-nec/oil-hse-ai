@@ -1,8 +1,8 @@
 from fastapi import FastAPI, UploadFile, File
 import pandas as pd
 import io
-
-from database import engine
+from contextlib import asynccontextmanager
+from database import engine, create_tables
 from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -52,11 +52,9 @@ def detect_sif_precursor(report_text):
         add_precursor("Gas Testing")
         life_saving_rule = "Confined Space"
 
-    # A confined-space report with an unsafe entry condition
     if confined_space and gas_testing_problem:
         add_precursor("Confined Space")
         add_precursor("Gas Testing")
-
 
     # ========================================================
     # 2. WORKING AT HEIGHT
@@ -77,7 +75,6 @@ def detect_sif_precursor(report_text):
         add_precursor("Working at Height")
         life_saving_rule = "Working at Height"
 
-
     # ========================================================
     # 3. HOT WORK
     # ========================================================
@@ -94,11 +91,9 @@ def detect_sif_precursor(report_text):
         or "without a permit" in text_lower
     )
 
-    if hot_work:
-        if unsafe_hot_work:
-            add_precursor("Hot Work")
-            life_saving_rule = "Hot Work"
-
+    if hot_work and unsafe_hot_work:
+        add_precursor("Hot Work")
+        life_saving_rule = "Hot Work"
 
     # ========================================================
     # 4. ELECTRICAL SAFETY
@@ -121,7 +116,6 @@ def detect_sif_precursor(report_text):
         add_precursor("Electrical Safety")
         life_saving_rule = "Energy Isolation"
 
-
     # ========================================================
     # 5. VEHICLE / PEDESTRIAN INTERACTION
     # ========================================================
@@ -141,7 +135,6 @@ def detect_sif_precursor(report_text):
         add_precursor("Vehicle Safety")
         add_precursor("Vehicle-Pedestrian Interaction")
         life_saving_rule = "Vehicle-Pedestrian Interaction"
-
 
     # ========================================================
     # 6. LIFTING / SUSPENDED LOAD
@@ -165,7 +158,6 @@ def detect_sif_precursor(report_text):
         add_precursor("Lifting Operations")
         life_saving_rule = "Lifting Operations"
 
-
     # ========================================================
     # 7. LOSS OF CONTAINMENT / LEAKAGE
     # ========================================================
@@ -183,36 +175,28 @@ def detect_sif_precursor(report_text):
         add_precursor("Loss of Containment")
         life_saving_rule = "Loss of Containment"
 
-
     # ========================================================
     # 8. PPE
     # ========================================================
-    # IMPORTANT:
-    # PPE alone does NOT mean SIF.
-    #
-    # Unsafe PPE situations are detected.
-    # Proper PPE usage is NOT flagged.
-    # ========================================================
 
     unsafe_ppe = (
-    "not wearing the required ppe" in text_lower
-    or "not wearing required ppe" in text_lower
-    or "not wearing ppe" in text_lower
-    or "not wearing the required personal protective equipment" in text_lower
-    or "not wearing required personal protective equipment" in text_lower
-    or "without required ppe" in text_lower
-    or "without proper ppe" in text_lower
-    or "ppe was not worn" in text_lower
-    or "ppe was missing" in text_lower
-    or "required ppe was missing" in text_lower
-    or "failed to wear ppe" in text_lower
-    or "did not wear ppe" in text_lower
-)
+        "not wearing the required ppe" in text_lower
+        or "not wearing required ppe" in text_lower
+        or "not wearing ppe" in text_lower
+        or "not wearing the required personal protective equipment" in text_lower
+        or "not wearing required personal protective equipment" in text_lower
+        or "without required ppe" in text_lower
+        or "without proper ppe" in text_lower
+        or "ppe was not worn" in text_lower
+        or "ppe was missing" in text_lower
+        or "required ppe was missing" in text_lower
+        or "failed to wear ppe" in text_lower
+        or "did not wear ppe" in text_lower
+    )
 
     if unsafe_ppe:
         add_precursor("PPE")
         life_saving_rule = "PPE"
-
 
     # ========================================================
     # 9. FIRE / FIRE EXTINGUISHER
@@ -231,7 +215,6 @@ def detect_sif_precursor(report_text):
         add_precursor("Fire Safety")
         life_saving_rule = "Fire Safety"
 
-
     # ========================================================
     # 10. FIRE / EXPLOSION HAZARD
     # ========================================================
@@ -248,7 +231,6 @@ def detect_sif_precursor(report_text):
         add_precursor("Fire & Explosion")
         life_saving_rule = "Fire & Explosion"
 
-
     # ========================================================
     # FINAL CLASSIFICATION
     # ========================================================
@@ -262,10 +244,6 @@ def detect_sif_precursor(report_text):
             "life_saving_rule": life_saving_rule
         }
 
-    # --------------------------------------------------------
-    # NON-SIF
-    # --------------------------------------------------------
-
     return {
         "sif_potential": False,
         "confidence_score": 0.60,
@@ -275,11 +253,23 @@ def detect_sif_precursor(report_text):
 
 
 # ============================================================
-# FASTAPI APPLICATION
+# FASTAPI APPLICATION LIFESPAN
 # ============================================================
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+
+    # Create database tables when the application starts
+    create_tables()
+
+    yield
+
+    # No shutdown action required
+
+
 app = FastAPI(
-    title="OIL HSE AI API"
+    title="OIL HSE AI API",
+    lifespan=lifespan
 )
 
 
@@ -288,7 +278,6 @@ app = FastAPI(
 # ============================================================
 
 origins = [
-    # Local development
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 
@@ -298,13 +287,10 @@ origins = [
     "http://localhost:5175",
     "http://127.0.0.1:5175",
 
-    # Render frontend
     "https://oil-hse-ai-1.onrender.com",
 ]
 
-
 app.add_middleware(
-
     CORSMiddleware,
 
     allow_origins=origins,
@@ -314,7 +300,6 @@ app.add_middleware(
     allow_methods=["*"],
 
     allow_headers=["*"],
-
 )
 
 
@@ -326,10 +311,7 @@ app.add_middleware(
 def root():
 
     return {
-
-        "message":
-        "OIL HSE AI Backend is running"
-
+        "message": "OIL HSE AI Backend is running"
     }
 
 
@@ -341,10 +323,7 @@ def root():
 def health_check():
 
     return {
-
-        "status":
-        "healthy"
-
+        "status": "healthy"
     }
 
 
@@ -426,9 +405,7 @@ def get_alerts():
             )
 
             analysis = detect_sif_precursor(
-
                 report["report_text"]
-
             )
 
             if analysis["sif_potential"]:
@@ -477,14 +454,6 @@ def get_alerts():
 # ============================================================
 # RE-ANALYZE EXISTING DATABASE REPORTS
 # ============================================================
-#
-# This endpoint is important for your current 19 reports.
-#
-# It analyzes the reports already stored in PostgreSQL
-# and updates their SIF status and confidence score.
-#
-# You do NOT need to upload the CSV again.
-# ============================================================
 
 @app.post("/reanalyze-reports")
 def reanalyze_reports():
@@ -512,9 +481,7 @@ def reanalyze_reports():
         for report in reports:
 
             analysis = detect_sif_precursor(
-
                 report.report_text
-
             )
 
             connection.execute(
@@ -536,7 +503,6 @@ def reanalyze_reports():
                 ),
 
                 {
-
                     "sif_potential":
                     analysis[
                         "sif_potential"
@@ -549,7 +515,6 @@ def reanalyze_reports():
 
                     "report_id":
                     report.report_id
-
                 }
 
             )
@@ -609,11 +574,7 @@ async def upload_reports(
         ):
 
             df = pd.read_csv(
-
-                io.BytesIO(
-                    contents
-                )
-
+                io.BytesIO(contents)
             )
 
 
@@ -626,11 +587,7 @@ async def upload_reports(
         ):
 
             df = pd.read_excel(
-
-                io.BytesIO(
-                    contents
-                )
-
+                io.BytesIO(contents)
             )
 
 
@@ -806,9 +763,7 @@ async def upload_reports(
             try:
 
                 report_date = pd.to_datetime(
-
                     report_date
-
                 ).date()
 
             except Exception:
