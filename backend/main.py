@@ -288,7 +288,7 @@ app = FastAPI(
 # ============================================================
 
 origins = [
-
+    # Local development
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 
@@ -298,6 +298,8 @@ origins = [
     "http://localhost:5175",
     "http://127.0.0.1:5175",
 
+    # Render frontend
+    "https://oil-hse-ai-1.onrender.com",
 ]
 
 

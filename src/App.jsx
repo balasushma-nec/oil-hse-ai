@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
+// Public FastAPI backend used by both local and deployed frontend
+const API_BASE_URL = "https://oil-hse-ai.onrender.com";
+
 function App() {
   const [backendStatus, setBackendStatus] = useState("Checking...");
   const [reports, setReports] = useState([]);
@@ -52,7 +55,7 @@ function App() {
   const loadReports = async () => {
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/reports"
+        `${API_BASE_URL}/reports`
       );
 
       if (!response.ok) {
@@ -74,7 +77,7 @@ function App() {
   const loadAlerts = async () => {
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/alerts"
+        `${API_BASE_URL}/alerts`
       );
 
       if (!response.ok) {
@@ -96,7 +99,7 @@ function App() {
 
   useEffect(() => {
     // Check backend
-    fetch("http://127.0.0.1:8000/health")
+    fetch(`${API_BASE_URL}/health`)
       .then((response) => response.json())
       .then((data) => {
         setBackendStatus(data.status);
@@ -140,7 +143,7 @@ function App() {
     formData.append("file", selectedFile);
 
     const response = await fetch(
-      "http://127.0.0.1:8000/upload-reports",
+      `${API_BASE_URL}/upload-reports`,
       {
         method: "POST",
         body: formData,
@@ -225,7 +228,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/analyze-report?report_text=${encodeURIComponent(
+        `${API_BASE_URL}/analyze-report?report_text=${encodeURIComponent(
           report.report_text
         )}`,
         {
